@@ -14,7 +14,7 @@ jobs:
       ARCH: arm64
       KBUILD_BUILD_USER: GitHub
       KBUILD_BUILD_HOST: Actions
-      DEFCONFIG: vendor/xiaomi/vayu_defconfig
+      DEFCONFIG: vayu_user_defconfig
 
     steps:
       - name: Checkout source
