@@ -1,73 +1,51 @@
-name: KernelSU Next Patching
+name: Build Xiaomi Vayu Kernel with KernelSU Next
 
 on:
   push:
-    branches: [ fifteen ]   # This workflow runs only on the SalamandersKSU branch
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  patch:
+  build:
     runs-on: ubuntu-latest
+
+    env:
+      ARCH: arm64
+      KBUILD_BUILD_USER: GitHub
+      KBUILD_BUILD_HOST: Actions
+      DEFCONFIG: vendor/xiaomi/vayu_defconfig
+
     steps:
-      - name: Checkout Source
-        uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Setup Prelude Clang v16 toolchain
+        run: |
+          CLANG_VERSION="clang-r450784e"
+          CLANG_URL="https://github.com/kdrag0n/prebuilt-clang/releases/download/v16/${CLANG_VERSION}-linux-x64.tar.xz"
+          mkdir -p toolchain
+          wget -qO- $CLANG_URL | tar xJ -C toolchain
+          echo "Toolchain extracted."
 
       - name: Apply KernelSU Next Patch (Stable)
         run: |
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next-susfs/kernel/setup.sh" | bash -s next-susfs
-jobs:
-  build:
-    name: Build Kernel for Poco X3 Pro (vayu)
-    runs-on: ubuntu-latest
 
-    env:
-      KERNEL_NAME: HeliosKernel
-      DEVICE_NAME: vayu
-      CLANG_VERSION: 16
-      ARCH: arm64
-      SUBARCH: arm64
-      DEFCONFIG: vendor/vayu_defconfig
+      - name: Prepare kernel config
+        run: |
+          make O=out ${{ env.DEFCONFIG }}
 
-    steps:
-    - name: Checkout Kernel Source
-      uses: actions/checkout@v3
+      - name: Build kernel
+        run: |
+          export PATH=$(pwd)/toolchain/${CLANG_VERSION}-linux-x64/bin:$PATH
+          make -j$(nproc) O=out \
+            CC=clang \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y bc bison build-essential curl flex gcc \
-          git kmod libssl-dev libncurses5-dev libelf-dev \
-          libudev-dev lzop cpio rsync unzip zip \
-          python-is-python3 device-tree-compiler
-
-    - name: Clone Prelude Clang
-      run: |
-        git clone --depth=1 https://gitlab.com/PixelOS-Devices/prelude-clang.git clang
-
-    - name: Set Environment Variables
-      run: |
-        echo "CROSS_COMPILE=aarch64-linux-android-" >> $GITHUB_ENV
-        echo "CROSS_COMPILE_ARM32=arm-linux-androideabi-" >> $GITHUB_ENV
-        echo "KBUILD_COMPILER_STRING=$(clang/bin/clang --version | head -n 1)" >> $GITHUB_ENV
-        echo "PATH=$GITHUB_WORKSPACE/clang/bin:$PATH" >> $GITHUB_ENV
-
-    - name: Make Defconfig
-      run: |
-        make O=out ARCH=$ARCH $DEFCONFIG
-
-    - name: Build Kernel
-      run: |
-        make -j$(nproc) O=out ARCH=$ARCH \
-          CC=clang \
-          CROSS_COMPILE=aarch64-linux-android- \
-          CROSS_COMPILE_ARM32=arm-linux-androideabi- \
-          CLANG_TRIPLE=aarch64-linux-gnu- \
-          LLVM=1
-
-    - name: Upload zImage & dtbo.img
-      uses: actions/upload-artifact@v3
-      with:
-        name: kernel-build-output
-        path: |
-          out/arch/arm64/boot/Image
-          out/arch/arm64/boot/dtbo.img
-          
+      - name: Archive kernel image
+        uses: actions/upload-artifact@v3
+        with:
+          name: kernel-image
+          path: out/arch/arm64/boot/Image.gz-dtb
