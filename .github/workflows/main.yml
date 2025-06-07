@@ -18,17 +18,19 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Setup Prelude Clang v16 toolchain
+      - name: Setup Prelude Clang toolchain
         run: |
           CLANG_VERSION="clang-r450784e"
-          CLANG_URL="https://github.com/kdrag0n/prebuilt-clang/releases/download/v16/${CLANG_VERSION}-linux-x64.tar.xz"
+          CLANG_TAR="${CLANG_VERSION}-linux-x64.tar.xz"
+          CLANG_URL="https://github.com/jjpprrrr/prelude-clang/releases/download/v16/${CLANG_TAR}"
           mkdir -p toolchain
-          wget -qO- $CLANG_URL | tar xJ -C toolchain
+          wget -qO toolchain/${CLANG_TAR} $CLANG_URL
+          tar -xf toolchain/${CLANG_TAR} -C toolchain
           echo "Toolchain extracted."
 
-      - name: Apply KernelSU Next Patch (Stable)
+      - name: Apply KernelSU Next Patch
         run: |
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next-susfs/kernel/setup.sh" | bash -s next-susfs
 
@@ -45,7 +47,7 @@ jobs:
             CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
       - name: Archive kernel image
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: kernel-image
           path: out/arch/arm64/boot/Image.gz-dtb
