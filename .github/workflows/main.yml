@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Prelude Clang toolchain
         run: |
@@ -47,7 +47,7 @@ jobs:
             CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
       - name: Archive kernel image
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: kernel-image
           path: out/arch/arm64/boot/Image.gz-dtb
